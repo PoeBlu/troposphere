@@ -56,18 +56,9 @@ def encode_to_dict(obj):
         # nomalized to a base dictionary all the way down.
         return encode_to_dict(obj.to_dict())
     elif isinstance(obj, (list, tuple)):
-        new_lst = []
-        for o in list(obj):
-            new_lst.append(encode_to_dict(o))
-        return new_lst
+        return [encode_to_dict(o) for o in list(obj)]
     elif isinstance(obj, dict):
-        props = {}
-        for name, prop in obj.items():
-            props[name] = encode_to_dict(prop)
-
-        return props
-    # This is useful when dealing with external libs using
-    # this format. Specifically awacs.
+        return {name: encode_to_dict(prop) for name, prop in obj.items()}
     elif hasattr(obj, 'JSONrepr'):
         return encode_to_dict(obj.JSONrepr())
     return obj
@@ -105,8 +96,7 @@ class BaseAWSObject(object):
 
         # Create the list of properties set on this object by the user
         self.properties = {}
-        dictname = getattr(self, 'dictname', None)
-        if dictname:
+        if dictname := getattr(self, 'dictname', None):
             self.resource = {
                 dictname: self.properties,
             }
@@ -156,7 +146,7 @@ class BaseAWSObject(object):
 
     def __setattr__(self, name, value):
         if name in self.__dict__.keys() \
-                or '_BaseAWSObject__initialized' not in self.__dict__:
+                    or '_BaseAWSObject__initialized' not in self.__dict__:
             return dict.__setattr__(self, name, value)
         elif name in self.attributes:
             if name == "DependsOn":
@@ -172,10 +162,14 @@ class BaseAWSObject(object):
             # If the value is a AWSHelperFn we can't do much validation
             # we'll have to leave that to Amazon.  Maybe there's another way
             # to deal with this that we'll come up with eventually
-            if isinstance(value, AWSHelperFn):
+            if (
+                isinstance(value, AWSHelperFn)
+                or not isinstance(expected_type, types.FunctionType)
+                and not isinstance(expected_type, list)
+                and isinstance(value, expected_type)
+            ):
                 return self.properties.__setitem__(name, value)
 
-            # If it's a function, call it...
             elif isinstance(expected_type, types.FunctionType):
                 try:
                     value = expected_type(value)
@@ -189,7 +183,6 @@ class BaseAWSObject(object):
                     raise
                 return self.properties.__setitem__(name, value)
 
-            # If it's a list of types, check against those types...
             elif isinstance(expected_type, list):
                 # If we're expecting a list, then make sure it is a list
                 if not isinstance(value, list):
@@ -200,40 +193,32 @@ class BaseAWSObject(object):
                 # we can't do the validation ourselves)
                 for v in value:
                     if not isinstance(v, tuple(expected_type)) \
-                       and not isinstance(v, AWSHelperFn):
+                           and not isinstance(v, AWSHelperFn):
                         self._raise_type(name, v, expected_type)
                 # Validated so assign it
                 return self.properties.__setitem__(name, value)
 
-            # Final validity check, compare the type of value against
-            # expected_type which should now be either a single type or
-            # a tuple of types.
-            elif isinstance(value, expected_type):
-                return self.properties.__setitem__(name, value)
             else:
                 self._raise_type(name, value, expected_type)
 
         type_name = getattr(self, 'resource_type', self.__class__.__name__)
 
         if type_name == 'AWS::CloudFormation::CustomResource' or \
-                type_name.startswith('Custom::'):
+                    type_name.startswith('Custom::'):
             # Add custom resource arguments to the dict without any further
             # validation. The properties of a CustomResource is not known.
             return self.properties.__setitem__(name, value)
 
-        raise AttributeError("%s object does not support attribute %s" %
-                             (type_name, name))
+        raise AttributeError(f"{type_name} object does not support attribute {name}")
 
     def _raise_type(self, name, value, expected_type):
-        raise TypeError('%s: %s.%s is %s, expected %s' % (self.__class__,
-                                                          self.title,
-                                                          name,
-                                                          type(value),
-                                                          expected_type))
+        raise TypeError(
+            f'{self.__class__}: {self.title}.{name} is {type(value)}, expected {expected_type}'
+        )
 
     def validate_title(self):
         if not valid_names.match(self.title):
-            raise ValueError('Name "%s" not alphanumeric' % self.title)
+            raise ValueError(f'Name "{self.title}" not alphanumeric')
 
     def validate(self):
         pass
@@ -250,11 +235,7 @@ class BaseAWSObject(object):
         if self.properties:
             return encode_to_dict(self.resource)
         elif hasattr(self, 'resource_type'):
-            d = {}
-            for k, v in self.resource.items():
-                if k != 'Properties':
-                    d[k] = v
-            return d
+            return {k: v for k, v in self.resource.items() if k != 'Properties'}
         else:
             return {}
 
@@ -265,37 +246,32 @@ class BaseAWSObject(object):
             try:
                 prop_attrs = cls.props[prop_name]
             except KeyError:
-                raise AttributeError("Object type %s does not have a "
-                                     "%s property." % (cls.__name__,
-                                                       prop_name))
+                raise AttributeError(
+                    f"Object type {cls.__name__} does not have a {prop_name} property."
+                )
             prop_type = prop_attrs[0]
             value = kwargs[prop_name]
-            is_aws_object = is_aws_object_subclass(prop_type)
-            if is_aws_object:
+            if is_aws_object := is_aws_object_subclass(prop_type):
                 if not isinstance(value, collections.Mapping):
-                    raise ValueError("Property definition for %s must be "
-                                     "a Mapping type" % prop_name)
+                    raise ValueError(f"Property definition for {prop_name} must be a Mapping type")
                 value = prop_type._from_dict(**value)
 
             if isinstance(prop_type, list):
                 if not isinstance(value, list):
-                    raise TypeError("Attribute %s must be a "
-                                    "list." % prop_name)
+                    raise TypeError(f"Attribute {prop_name} must be a list.")
                 new_value = []
                 for v in value:
                     new_v = v
                     if is_aws_object_subclass(prop_type[0]):
                         if not isinstance(v, collections.Mapping):
                             raise ValueError(
-                                "Property definition for %s must be "
-                                "a list of Mapping types" % prop_name)
+                                f"Property definition for {prop_name} must be a list of Mapping types"
+                            )
                         new_v = prop_type[0]._from_dict(**v)
                     new_value.append(new_v)
                 value = new_value
             props[prop_name] = value
-        if title:
-            return cls(title, **props)
-        return cls(**props)
+        return cls(title, **props) if title else cls(**props)
 
     @classmethod
     def from_dict(cls, title, d):
@@ -305,10 +281,9 @@ class BaseAWSObject(object):
         for k, (_, required) in self.props.items():
             if required and k not in self.properties:
                 rtype = getattr(self, 'resource_type', "<unknown type>")
-                title = getattr(self, 'title')
-                msg = "Resource %s required in type %s" % (k, rtype)
-                if title:
-                    msg += " (title: %s)" % title
+                msg = f"Resource {k} required in type {rtype}"
+                if title := getattr(self, 'title'):
+                    msg += f" (title: {title})"
                 raise ValueError(msg)
 
 
@@ -369,9 +344,7 @@ class AWSAttribute(BaseAWSObject):
 
 def validate_delimiter(delimiter):
     if not isinstance(delimiter, basestring):
-        raise ValueError(
-            "Delimiter must be a String, %s provided" % type(delimiter)
-        )
+        raise ValueError(f"Delimiter must be a String, {type(delimiter)} provided")
 
 
 def validate_pausetime(pausetime):
@@ -390,10 +363,7 @@ class UpdatePolicy(BaseAWSObject):
 
 class AWSHelperFn(object):
     def getdata(self, data):
-        if isinstance(data, BaseAWSObject):
-            return data.title
-        else:
-            return data
+        return data.title if isinstance(data, BaseAWSObject) else data
 
     def to_dict(self):
         return encode_to_dict(self.data)
@@ -477,7 +447,7 @@ class Sub(AWSHelperFn):
     def __init__(self, input_str, dict_values=None, **values):
         # merge dict
         if dict_values:
-            values.update(dict_values)
+            values |= dict_values
         self.data = {'Fn::Sub': [input_str, values] if values else input_str}
 
 
@@ -626,7 +596,7 @@ class Template(object):
         return name
 
     def handle_duplicate_key(self, key):
-        raise ValueError('duplicate key "%s" detected' % key)
+        raise ValueError(f'duplicate key "{key}" detected')
 
     def _update(self, d, values):
         if isinstance(values, list):
@@ -684,10 +654,7 @@ class Template(object):
         self.rules[name] = rule
 
     def set_version(self, version=None):
-        if version:
-            self.version = version
-        else:
-            self.version = "2010-09-09"
+        self.version = version if version else "2010-09-09"
 
     def add_version(self, version=None):
         warnings.warn(
@@ -756,19 +723,16 @@ class Template(object):
         :type group_name: str
         """
         groups = self.metadata \
-            .setdefault("AWS::CloudFormation::Interface", {}) \
-            .setdefault("ParameterGroups", [])
+                .setdefault("AWS::CloudFormation::Interface", {}) \
+                .setdefault("ParameterGroups", [])
 
         if isinstance(parameter, BaseAWSObject):
             parameter = parameter.title
 
-        # Check if group_name already exists
-        existing_group = None
-        for group in groups:
-            if group["Label"]["default"] == group_name:
-                existing_group = group
-                break
-
+        existing_group = next(
+            (group for group in groups if group["Label"]["default"] == group_name),
+            None,
+        )
         if existing_group is None:
             existing_group = {
                 "Label": {"default": group_name},

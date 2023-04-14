@@ -13,8 +13,9 @@ VALID_VOLUME_TYPES = ('standard', 'gp2', 'io1')
 def validate_volume_type(volume_type):
     """Validate VolumeType for ElasticsearchDomain"""
     if volume_type not in VALID_VOLUME_TYPES:
-        raise ValueError("Elasticsearch Domain VolumeType must be one of: %s" %
-                         ", ".join(VALID_VOLUME_TYPES))
+        raise ValueError(
+            f'Elasticsearch Domain VolumeType must be one of: {", ".join(VALID_VOLUME_TYPES)}'
+        )
     return volume_type
 
 

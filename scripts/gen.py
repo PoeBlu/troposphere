@@ -74,8 +74,7 @@ class Override(object):
     def get_required(self, class_name, prop):
         if self.override:
             try:
-                v = self.override['classes'][class_name][prop]['required']
-                return v
+                return self.override['classes'][class_name][prop]['required']
             except KeyError:
                 return None
 
@@ -204,12 +203,9 @@ class File(object):
         """Decode the values type and return a non-primitive property type."""
         if 'PrimitiveType' in value:
             return None
-        if value['Type'] == 'List':
-            if 'ItemType' in value:
-                return value['ItemType']
-            else:
-                return None
-        elif value['Type'] == 'Map':
+        if value['Type'] == 'List' and 'ItemType' in value:
+            return value['ItemType']
+        elif value['Type'] in ['List', 'Map']:
             return None
         else:
             # Non-primitive (Property) name
@@ -236,8 +232,8 @@ class File(object):
                 override = override.lstrip('common/')
                 filename = "validators"
             else:
-                filename = "%s_validators" % self.filename
-            print("from .%s import %s" % (filename, override))
+                filename = f"{self.filename}_validators"
+            print(f"from .{filename} import {override}")
 
     def _output_imports(self):
         """Output imports for base troposphere class types."""
@@ -281,8 +277,7 @@ class File(object):
         self._output_imports()
         self._output_tags()
         self._output_validators()
-        header = self.override.get_header()
-        if header:
+        if header := self.override.get_header():
             print()
             print()
             print(header.rstrip())
@@ -346,9 +341,9 @@ def get_type(value):
         return map_type.get(value['PrimitiveType'], value['PrimitiveType'])
     if value['Type'] == 'List':
         if 'ItemType' in value:
-            return "[%s]" % value['ItemType']
+            return f"[{value['ItemType']}]"
         else:
-            return "[%s]" % map_type.get(value['PrimitiveItemType'])
+            return f"[{map_type.get(value['PrimitiveItemType'])}]"
     elif value['Type'] == 'Map':
         return 'dict'
     else:
@@ -365,9 +360,9 @@ def get_type3(value):
         return map_type3.get(value['PrimitiveType'], value['PrimitiveType'])
     if value['Type'] == 'List':
         if 'ItemType' in value:
-            return "[%s]" % value['ItemType']
+            return f"[{value['ItemType']}]"
         else:
-            return "[%s]" % map_type3.get(value['PrimitiveItemType'])
+            return f"[{map_type3.get(value['PrimitiveItemType'])}]"
     elif value['Type'] == 'Map':
         return 'dict'
     else:
@@ -382,28 +377,22 @@ def get_type3(value):
 def output_class(class_name, properties, override, resource_name=None):
     print()
     print()
-    class_validator = override.get_class_validator(class_name)
-    mixin = ""
-    if class_validator:
-        mixin = "%s, " % class_validator
-    linebreak = ""
-    if len(mixin) > 28:
-        linebreak = "\n%s" % (' '*8)
+    if class_validator := override.get_class_validator(class_name):
+        mixin = f"{class_validator}, "
+    else:
+        mixin = ""
+    linebreak = "\n%s" % (' '*8) if len(mixin) > 28 else ""
     if resource_name:
-        print('class %s(%s%sAWSObject):' % (class_name, linebreak, mixin))
-        print('    resource_type = "%s"' % resource_name)
+        print(f'class {class_name}({linebreak}{mixin}AWSObject):')
+        print(f'    resource_type = "{resource_name}"')
         print()
     else:
-        print('class %s(%s%sAWSProperty):' % (class_name, linebreak, mixin))
+        print(f'class {class_name}({linebreak}{mixin}AWSProperty):')
 
     # Output the props dict
     print('    props = {')
     for key, value in sorted(properties.items()):
-        if key == 'Tags':
-            value_type = "Tags"
-        else:
-            value_type = get_type(value)
-
+        value_type = "Tags" if key == 'Tags' else get_type(value)
         custom_validator = override.get_validator(class_name, key)
         if custom_validator is not None:
             value_type = custom_validator
@@ -414,8 +403,7 @@ def output_class(class_name, properties, override, resource_name=None):
 
         # Wrap long names for pycodestyle
         if len(key) + len(value_type) < 55:
-            print("        '%s': (%s, %s)," % (
-                key, value_type, required))
+            print(f"        '{key}': ({value_type}, {required}),")
         else:
             print("        '%s':\n            (%s, %s)," % (
                 key, value_type, required))
@@ -426,39 +414,31 @@ def output_class_stub(class_name, properties, resource_name=None):
     print()
     print()
     if resource_name:
-        print('class %s(AWSObject):' % class_name)
+        print(f'class {class_name}(AWSObject):')
         print('    resource_type: str')
         print()
         sys.stdout.write('    def __init__(self, title')
     else:
-        print('class %s(AWSProperty):' % class_name)
+        print(f'class {class_name}(AWSProperty):')
         print()
         sys.stdout.write('    def __init__(self')
 
     for key, value in sorted(properties.items()):
-        if key == 'Tags':
-            value_type = "Tags"
-        else:
-            value_type = get_type3(value)
-
+        value_type = "Tags" if key == 'Tags' else get_type3(value)
         if value_type.startswith("["):  # Means that args are a list
-            sys.stdout.write(', %s:List%s=...' % (key, value_type))
+            sys.stdout.write(f', {key}:List{value_type}=...')
         else:
-            sys.stdout.write(', %s:%s=...' % (key, value_type))
+            sys.stdout.write(f', {key}:{value_type}=...')
 
     print(') -> None: ...')
     print()
 
     for key, value in sorted(properties.items()):
-        if key == 'Tags':
-            value_type = "Tags"
-        else:
-            value_type = get_type3(value)
-
+        value_type = "Tags" if key == 'Tags' else get_type3(value)
         if value_type.startswith("["):  # Means that args are a list
-            print('    %s: List%s' % (key, value_type))
+            print(f'    {key}: List{value_type}')
         else:
-            print('    %s: %s' % (key, value_type))
+            print(f'    {key}: {value_type}')
 
 
 def process_file(filename, stub=False):

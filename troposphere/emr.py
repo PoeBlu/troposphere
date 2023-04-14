@@ -20,8 +20,9 @@ def validate_action_on_failure(action_on_failure):
     """Validate action on failure for EMR StepConfig """
 
     if action_on_failure not in ACTIONS_ON_FAILURE:
-        raise ValueError("StepConfig ActionOnFailure  must be one of: %s" %
-                         ", ".join(ACTIONS_ON_FAILURE))
+        raise ValueError(
+            f'StepConfig ActionOnFailure  must be one of: {", ".join(ACTIONS_ON_FAILURE)}'
+        )
     return action_on_failure
 
 
@@ -117,16 +118,14 @@ Configuration.props['Configurations'] = ([Configuration], False)
 def market_validator(x):
     valid_values = ['ON_DEMAND', 'SPOT']
     if x not in valid_values:
-        raise ValueError("Market must be one of: %s" %
-                         ', '.join(valid_values))
+        raise ValueError(f"Market must be one of: {', '.join(valid_values)}")
     return x
 
 
 def volume_type_validator(x):
     valid_values = ['standard', 'io1', 'gp2']
     if x not in valid_values:
-        raise ValueError("VolumeType must be one of: %s" %
-                         ', '.join(valid_values))
+        raise ValueError(f"VolumeType must be one of: {', '.join(valid_values)}")
     return x
 
 
@@ -187,39 +186,41 @@ class SimpleScalingPolicyConfiguration(AWSProperty):
     }
 
     def validate(self):
-        if 'AdjustmentType' in self.properties and \
-           'ScalingAdjustment' in self.properties:
+        if (
+            'AdjustmentType' not in self.properties
+            or 'ScalingAdjustment' not in self.properties
+        ):
+            return
+        valid_values = [
+            CHANGE_IN_CAPACITY,
+            PERCENT_CHANGE_IN_CAPACITY,
+            EXACT_CAPACITY,
+        ]
 
-            valid_values = [
-                CHANGE_IN_CAPACITY,
-                PERCENT_CHANGE_IN_CAPACITY,
-                EXACT_CAPACITY,
-            ]
+        adjustment_type = self.properties.get('AdjustmentType', None)
+        scaling_adjustment = self.properties.get('ScalingAdjustment', None)
 
-            adjustment_type = self.properties.get('AdjustmentType', None)
-            scaling_adjustment = self.properties.get('ScalingAdjustment', None)
+        if adjustment_type not in valid_values:
+            raise ValueError(
+                'Only CHANGE_IN_CAPACITY, PERCENT_CHANGE_IN_CAPACITY, or'
+                ' EXACT_CAPACITY are valid AdjustmentTypes'
+            )
 
-            if adjustment_type not in valid_values:
+        if adjustment_type == CHANGE_IN_CAPACITY:
+            integer(scaling_adjustment)
+        elif adjustment_type == PERCENT_CHANGE_IN_CAPACITY:
+            double(scaling_adjustment)
+            f = float(scaling_adjustment)
+            if f < 0.0 or f > 1.0:
                 raise ValueError(
-                    'Only CHANGE_IN_CAPACITY, PERCENT_CHANGE_IN_CAPACITY, or'
-                    ' EXACT_CAPACITY are valid AdjustmentTypes'
+                    'ScalingAdjustment value must be between 0.0 and 1.0'
+                    ' value was %0.2f' % f
                 )
-
-            if adjustment_type == CHANGE_IN_CAPACITY:
-                integer(scaling_adjustment)
-            elif adjustment_type == PERCENT_CHANGE_IN_CAPACITY:
-                double(scaling_adjustment)
-                f = float(scaling_adjustment)
-                if f < 0.0 or f > 1.0:
-                    raise ValueError(
-                        'ScalingAdjustment value must be between 0.0 and 1.0'
-                        ' value was %0.2f' % f
-                    )
-            elif adjustment_type == EXACT_CAPACITY:
-                positive_integer(scaling_adjustment)
-            else:
-                raise ValueError('ScalingAdjustment value must be'
-                                 ' an integer or a float')
+        elif adjustment_type == EXACT_CAPACITY:
+            positive_integer(scaling_adjustment)
+        else:
+            raise ValueError('ScalingAdjustment value must be'
+                             ' an integer or a float')
 
 
 class ScalingAction(AWSProperty):
@@ -411,8 +412,7 @@ class InstanceGroupConfig(AWSObject):
 def action_on_failure_validator(x):
     valid_values = ['CONTINUE', 'CANCEL_AND_WAIT']
     if x not in valid_values:
-        raise ValueError("ActionOnFailure must be one of: %s" %
-                         ', '.join(valid_values))
+        raise ValueError(f"ActionOnFailure must be one of: {', '.join(valid_values)}")
     return x
 
 

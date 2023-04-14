@@ -25,12 +25,8 @@ def from_file(filepath, delimiter='', blanklines=False):
 
     try:
         with open(filepath, 'r') as f:
-            for line in f:
-                if blanklines and line.strip('\n\r ') == '':
-                    continue
-
-                data.append(line)
+            data.extend(line for line in f if not blanklines or line.strip('\n\r ') != '')
     except IOError:
-        raise IOError('Error opening or reading file: {}'.format(filepath))
+        raise IOError(f'Error opening or reading file: {filepath}')
 
     return Base64(Join(delimiter, data))

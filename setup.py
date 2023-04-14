@@ -33,7 +33,7 @@ def file_contents(file_name):
 
 def get_version():
     curr_dir = os.path.abspath(os.path.dirname(__file__))
-    with open(curr_dir + "/troposphere/__init__.py", "r") as init_version:
+    with open(f"{curr_dir}/troposphere/__init__.py", "r") as init_version:
         for line in init_version:
             if "__version__" in line:
                 return str(line.split("=")[-1].strip(" ")[1:-2])

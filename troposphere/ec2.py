@@ -20,8 +20,9 @@ def validate_elasticinferenceaccelerator_type(
     """Validate ElasticInferenceAccelerator for Instance"""
 
     if elasticinferenceaccelerator_type not in VALID_ELASTICINFERENCEACCELERATOR_TYPES:  # NOQA
-        raise ValueError("Elastic Inference Accelerator Type must be one of: %s" %  # NOQA
-                         ", ".join(VALID_ELASTICINFERENCEACCELERATOR_TYPES))
+        raise ValueError(
+            f'Elastic Inference Accelerator Type must be one of: {", ".join(VALID_ELASTICINFERENCEACCELERATOR_TYPES)}'
+        )
     return elasticinferenceaccelerator_type
 
 
@@ -432,10 +433,10 @@ def check_ports(props):
     ]
     proto = props['IpProtocol']
 
-    if proto not in ports_optional:
-        if not ('ToPort' in props and 'FromPort' in props):
-            raise ValueError(
-                "ToPort/FromPort must be specified for proto %s" % proto)
+    if proto not in ports_optional and (
+        'ToPort' not in props or 'FromPort' not in props
+    ):
+        raise ValueError(f"ToPort/FromPort must be specified for proto {proto}")
 
 
 class SecurityGroupEgress(AWSObject):
@@ -543,12 +544,13 @@ class Subnet(AWSObject):
     }
 
     def validate(self):
-        if 'Ipv6CidrBlock' in self.properties:
-            if not self.properties.get('AssignIpv6AddressOnCreation'):
-                raise ValueError(
-                    "If Ipv6CidrBlock is present, "
-                    "AssignIpv6AddressOnCreation must be set to True"
-                )
+        if 'Ipv6CidrBlock' in self.properties and not self.properties.get(
+            'AssignIpv6AddressOnCreation'
+        ):
+            raise ValueError(
+                "If Ipv6CidrBlock is present, "
+                "AssignIpv6AddressOnCreation must be set to True"
+            )
 
 
 class SubnetNetworkAclAssociation(AWSObject):

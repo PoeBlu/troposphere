@@ -35,8 +35,7 @@ class TestTemplateGenerator(unittest.TestCase):
 
 
 def create_test_class(testname, **kwargs):
-    klass = type(testname, (TestTemplateGenerator,), kwargs)
-    return klass
+    return type(testname, (TestTemplateGenerator,), kwargs)
 
 
 def load_tests(loader, tests, pattern):
@@ -51,11 +50,13 @@ def load_tests(loader, tests, pattern):
     for f in example_filesnames:
         if f in EXCLUDE_EXAMPLES:
             continue
-        testname = 'test_' + f[:-3]
-        expected_output = open('tests/examples_output/%s.template' %
-                               f[:-3]).read()
-        test_class = create_test_class(testname, filename=examples + '/' + f,
-                                       expected_output=expected_output)
+        testname = f'test_{f[:-3]}'
+        expected_output = open(f'tests/examples_output/{f[:-3]}.template').read()
+        test_class = create_test_class(
+            testname,
+            filename=f'{examples}/{f}',
+            expected_output=expected_output,
+        )
         tests = loader.loadTestsFromTestCase(test_class)
         suite.addTests(tests)
 

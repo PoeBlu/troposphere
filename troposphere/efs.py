@@ -9,7 +9,7 @@ def throughput_mode_validator(mode):
     valid_modes = [Bursting, Provisioned]
     if mode not in valid_modes:
         raise ValueError(
-            'ThroughputMode must be one of: "%s"' % (', '.join(valid_modes))
+            f"""ThroughputMode must be one of: "{', '.join(valid_modes)}\""""
         )
     return mode
 

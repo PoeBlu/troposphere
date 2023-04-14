@@ -45,10 +45,7 @@ class WaitCondition(AWSObject):
         if 'CreationPolicy' in self.resource:
             for k in self.props.keys():
                 if k in self.properties:
-                    raise ValueError(
-                        "Property %s cannot be specified with CreationPolicy" %
-                        k
-                    )
+                    raise ValueError(f"Property {k} cannot be specified with CreationPolicy")
         else:
             required = ['Handle', 'Timeout']
             check_required(self.__class__.__name__, self.properties, required)
@@ -97,7 +94,7 @@ class InitFiles(AWSHelperFn):
     def validate(self, data):
         for k in data:
             if not isinstance(data[k], InitFile):
-                raise ValueError("File '" + k + "' must be of type InitFile")
+                raise ValueError(f"File '{k}' must be of type InitFile")
 
 
 class InitService(AWSProperty):
@@ -119,9 +116,7 @@ class InitServices(AWSHelperFn):
     def validate(self, data):
         for k in data:
             if not isinstance(data[k], InitService):
-                raise ValueError(
-                    "Service '" + k + "' must be of type InitService"
-                )
+                raise ValueError(f"Service '{k}' must be of type InitService")
 
 
 class InitConfigSets(AWSHelperFn):

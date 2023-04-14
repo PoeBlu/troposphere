@@ -141,9 +141,7 @@ def validate_environment_state(environment_state):
         "DISABLED"
     ]
     if environment_state not in valid_states:
-        raise ValueError(
-            "{} is not a valid environment state".format(environment_state)
-        )
+        raise ValueError(f"{environment_state} is not a valid environment state")
     return environment_state
 
 
@@ -177,9 +175,7 @@ def validate_queue_state(queue_state):
         "DISABLED"
     ]
     if queue_state not in valid_states:
-        raise ValueError(
-            "{} is not a valid queue state".format(queue_state)
-        )
+        raise ValueError(f"{queue_state} is not a valid queue state")
     return queue_state
 
 

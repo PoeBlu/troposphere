@@ -21,8 +21,7 @@ def validate_unit(unit):
     """Validate Units"""
 
     if unit not in VALID_UNITS:
-        raise ValueError("MetricStat Unit must be one of: %s" %
-                         ", ".join(VALID_UNITS))
+        raise ValueError(f'MetricStat Unit must be one of: {", ".join(VALID_UNITS)}')
     return unit
 
 

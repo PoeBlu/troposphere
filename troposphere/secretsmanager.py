@@ -14,8 +14,9 @@ def validate_target_types(target_type):
     """Target types validation rule."""
 
     if target_type not in VALID_TARGET_TYPES:
-        raise ValueError("Target type must be one of : %s" %
-                         ", ".join(VALID_TARGET_TYPES))
+        raise ValueError(
+            f'Target type must be one of : {", ".join(VALID_TARGET_TYPES)}'
+        )
     return target_type
 
 

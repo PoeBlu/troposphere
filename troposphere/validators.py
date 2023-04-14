@@ -56,8 +56,9 @@ def integer_list_item(allowed_values):
         i = int(x)
         if i in allowed_values:
             return x
-        raise ValueError('Integer must be one of following: %s' %
-                         ', '.join(str(j) for j in allowed_values))
+        raise ValueError(
+            f"Integer must be one of following: {', '.join(str(j) for j in allowed_values)}"
+        )
 
     return integer_list_item_checker
 
@@ -95,9 +96,7 @@ def network_port(x):
 
 
 def tg_healthcheck_port(x):
-    if isinstance(x, str) and x == "traffic-port":
-        return x
-    return network_port(x)
+    return x if isinstance(x, str) and x == "traffic-port" else network_port(x)
 
 
 def s3_bucket_name(b):
@@ -105,19 +104,19 @@ def s3_bucket_name(b):
     # consecutive periods not allowed
 
     if '..' in b:
-        raise ValueError("%s is not a valid s3 bucket name" % b)
+        raise ValueError(f"{b} is not a valid s3 bucket name")
 
     # IP addresses not allowed
 
     ip_re = compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
     if ip_re.match(b):
-        raise ValueError("%s is not a valid s3 bucket name" % b)
+        raise ValueError(f"{b} is not a valid s3 bucket name")
 
     s3_bucket_name_re = compile(r'^[a-z\d][a-z\d\.-]{1,61}[a-z\d]$')
     if s3_bucket_name_re.match(b):
         return b
     else:
-        raise ValueError("%s is not a valid s3 bucket name" % b)
+        raise ValueError(f"{b} is not a valid s3 bucket name")
 
 
 def elb_name(b):
@@ -125,7 +124,7 @@ def elb_name(b):
     if elb_name_re.match(b):
         return b
     else:
-        raise ValueError("%s is not a valid elb name" % b)
+        raise ValueError(f"{b} is not a valid elb name")
 
 
 def encoding(encoding):
@@ -146,9 +145,7 @@ def s3_transfer_acceleration_status(value):
     valid_status = ['Enabled', 'Suspended']
     if value not in valid_status:
         raise ValueError(
-            'AccelerationStatus must be one of: "%s"' % (
-                ', '.join(valid_status)
-            )
+            f"""AccelerationStatus must be one of: "{', '.join(valid_status)}\""""
         )
     return value
 
@@ -158,7 +155,7 @@ def iam_names(b):
     if iam_name_re.match(b):
         return b
     else:
-        raise ValueError("%s is not a valid iam name" % b)
+        raise ValueError(f"{b} is not a valid iam name")
 
 
 def iam_user_name(user_name):
@@ -185,7 +182,7 @@ def iam_path(path):
 
     iam_path_re = compile(r'^\/.*\/$|^\/$')
     if not iam_path_re.match(path):
-        raise ValueError("%s is not a valid iam path name" % path)
+        raise ValueError(f"{path} is not a valid iam path name")
     return path
 
 
@@ -218,16 +215,15 @@ def one_of(class_name, properties, property, conditionals):
 def mutually_exclusive(class_name, properties, conditionals):
     from . import NoValue
 
-    found_list = []
-    for c in conditionals:
-        if c in properties and not properties[c] == NoValue:
-            found_list.append(c)
+    found_list = [
+        c for c in conditionals if c in properties and properties[c] != NoValue
+    ]
     seen = set(found_list)
     specified_count = len(seen)
     if specified_count > 1:
-        raise ValueError(('%s: only one of the following'
-                          ' can be specified: %s') % (
-                          class_name, ', '.join(conditionals)))
+        raise ValueError(
+            f"{class_name}: only one of the following can be specified: {', '.join(conditionals)}"
+        )
     return specified_count
 
 
@@ -266,9 +262,7 @@ def notification_type(notification):
     valid_notifications = ['Command', 'Invocation']
     if notification not in valid_notifications:
         raise ValueError(
-            'NotificationType must be one of: "%s"' % (
-                ', '.join(valid_notifications)
-            )
+            f"""NotificationType must be one of: "{', '.join(valid_notifications)}\""""
         )
     return notification
 
@@ -279,9 +273,7 @@ def notification_event(events):
     for event in events:
         if event not in valid_events:
             raise ValueError(
-                'NotificationEvents must be at least one of: "%s"' % (
-                    ', '.join(valid_events)
-                )
+                f"""NotificationEvents must be at least one of: "{', '.join(valid_events)}\""""
             )
     return events
 
@@ -289,11 +281,7 @@ def notification_event(events):
 def task_type(task):
     valid_tasks = ['RUN_COMMAND', 'AUTOMATION', 'LAMBDA', 'STEP_FUNCTION']
     if task not in valid_tasks:
-        raise ValueError(
-            'TaskType must be one of: "%s"' % (
-                ', '.join(valid_tasks)
-            )
-        )
+        raise ValueError(f"""TaskType must be one of: "{', '.join(valid_tasks)}\"""")
     return task
 
 
@@ -302,9 +290,7 @@ def compliance_level(level):
                     'UNSPECIFIED']
     if level not in valid_levels:
         raise ValueError(
-            'ApprovedPatchesComplianceLevel must be one of: "%s"' % (
-                ', '.join(valid_levels)
-            )
+            f"""ApprovedPatchesComplianceLevel must be one of: "{', '.join(valid_levels)}\""""
         )
     return level
 
@@ -314,9 +300,7 @@ def operating_system(os):
                 'REDHAT_ENTERPRISE_LINUX', 'SUSE', 'CENTOS']
     if os not in valid_os:
         raise ValueError(
-            'OperatingSystem must be one of: "%s"' % (
-                ', '.join(valid_os)
-            )
+            f"""OperatingSystem must be one of: "{', '.join(valid_os)}\""""
         )
     return os
 
@@ -336,6 +320,10 @@ def vpn_pre_shared_key(key):
 
 
 def vpn_tunnel_inside_cidr(cidr):
+    cidr_match_re = compile(
+        r"^169\.254\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)"
+        r"\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\/30$"
+    )
     reserved_cidrs = [
         '169.254.0.0/30',
         '169.254.1.0/30',
@@ -343,22 +331,16 @@ def vpn_tunnel_inside_cidr(cidr):
         '169.254.3.0/30',
         '169.254.4.0/30',
         '169.254.5.0/30',
-        '169.254.169.252/30'
+        '169.254.169.252/30',
     ]
-    cidr_match_re = compile(
-        r"^169\.254\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)"
-        r"\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\/30$"
-    )
     if cidr in reserved_cidrs:
         raise ValueError(
-            'The following CIDR blocks are reserved and cannot be used: "%s"' %
-            (', '.join(reserved_cidrs))
+            f"""The following CIDR blocks are reserved and cannot be used: "{', '.join(reserved_cidrs)}\""""
         )
     elif not cidr_match_re.match(cidr):
         raise ValueError(
-            '%s is not a valid CIDR.'
-            ' A size /30 CIDR block from the 169.254.0.0/16 must be specified.'
-            % cidr)
+            f'{cidr} is not a valid CIDR. A size /30 CIDR block from the 169.254.0.0/16 must be specified.'
+        )
     return(cidr)
 
 
@@ -366,9 +348,7 @@ def vpc_endpoint_type(endpoint_type):
     valid_types = ['Interface', 'Gateway']
     if endpoint_type not in valid_types:
         raise ValueError(
-            'VpcEndpointType must be one of: "%s"' % (
-                ', '.join(valid_types)
-            )
+            f"""VpcEndpointType must be one of: "{', '.join(valid_types)}\""""
         )
     return(endpoint_type)
 
@@ -385,9 +365,7 @@ def scalable_dimension_type(scalable_dimension):
                     ]
     if scalable_dimension not in valid_values:
         raise ValueError(
-            'ScalableDimension must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
+            f"""ScalableDimension must be one of: "{', '.join(valid_values)}\""""
         )
     return(scalable_dimension)
 
@@ -396,9 +374,7 @@ def service_namespace_type(service_namespace):
     valid_values = ['autoscaling', 'ecs', 'ec2', 'rds', 'dynamodb']
     if service_namespace not in valid_values:
         raise ValueError(
-            'ServiceNamespace must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
+            f"""ServiceNamespace must be one of: "{', '.join(valid_values)}\""""
         )
     return(service_namespace)
 
@@ -408,22 +384,14 @@ def statistic_type(statistic):
                     'SampleCount', 'Sum'
                     ]
     if statistic not in valid_values:
-        raise ValueError(
-            'Statistic must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
-        )
+        raise ValueError(f"""Statistic must be one of: "{', '.join(valid_values)}\"""")
     return(statistic)
 
 
 def key_usage_type(key):
     valid_values = ['ENCRYPT_DECRYPT']
     if key not in valid_values:
-        raise ValueError(
-            'KeyUsage must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
-        )
+        raise ValueError(f"""KeyUsage must be one of: "{', '.join(valid_values)}\"""")
     return(key)
 
 
@@ -431,11 +399,7 @@ def cloudfront_event_type(event_type):
     valid_values = ['viewer-request', 'viewer-response',
                     'origin-request', 'origin-response']
     if event_type not in valid_values:
-        raise ValueError(
-            'EventType must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
-        )
+        raise ValueError(f"""EventType must be one of: "{', '.join(valid_values)}\"""")
     return(event_type)
 
 
@@ -443,9 +407,7 @@ def cloudfront_viewer_protocol_policy(viewer_protocol_policy):
     valid_values = ['allow-all', 'redirect-to-https', 'https-only']
     if viewer_protocol_policy not in valid_values:
         raise ValueError(
-            'ViewerProtocolPolicy must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
+            f"""ViewerProtocolPolicy must be one of: "{', '.join(valid_values)}\""""
         )
     return(viewer_protocol_policy)
 
@@ -454,9 +416,7 @@ def cloudfront_restriction_type(restriction_type):
     valid_values = ['none', 'blacklist', 'whitelist']
     if restriction_type not in valid_values:
         raise ValueError(
-            'RestrictionType must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
+            f"""RestrictionType must be one of: "{', '.join(valid_values)}\""""
         )
     return(restriction_type)
 
@@ -464,11 +424,7 @@ def cloudfront_restriction_type(restriction_type):
 def cloudfront_forward_type(forward):
     valid_values = ['none', 'all', 'whitelist']
     if forward not in valid_values:
-        raise ValueError(
-            'Forward must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
-        )
+        raise ValueError(f"""Forward must be one of: "{', '.join(valid_values)}\"""")
     return(forward)
 
 
@@ -477,9 +433,7 @@ def priceclass_type(price_class):
                     'PriceClass_All']
     if price_class not in valid_values:
         raise ValueError(
-            'PriceClass must be one of: "%s"' % (
-                ', '.join(valid_values)
-            )
+            f"""PriceClass must be one of: "{', '.join(valid_values)}\""""
         )
     return(price_class)
 
@@ -487,11 +441,7 @@ def priceclass_type(price_class):
 def ecs_proxy_type(proxy_type):
     valid_types = ['APPMESH']
     if proxy_type not in valid_types:
-        raise ValueError(
-            'Type must be one of: "%s"' % (
-                ', '.join(valid_types)
-            )
-        )
+        raise ValueError(f"""Type must be one of: "{', '.join(valid_types)}\"""")
     return(proxy_type)
 
 
@@ -500,4 +450,4 @@ def backup_vault_name(name):
     if vault_name_re.match(name):
         return name
     else:
-        raise ValueError("%s is not a valid backup vault name" % name)
+        raise ValueError(f"{name} is not a valid backup vault name")

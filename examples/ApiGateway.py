@@ -112,18 +112,22 @@ method = t.add_resource(Method(
 # Create a deployment
 stage_name = 'v1'
 
-deployment = t.add_resource(Deployment(
-    "%sDeployment" % stage_name,
-    DependsOn="LambdaMethod",
-    RestApiId=Ref(rest_api),
-))
+deployment = t.add_resource(
+    Deployment(
+        f"{stage_name}Deployment",
+        DependsOn="LambdaMethod",
+        RestApiId=Ref(rest_api),
+    )
+)
 
-stage = t.add_resource(Stage(
-    '%sStage' % stage_name,
-    StageName=stage_name,
-    RestApiId=Ref(rest_api),
-    DeploymentId=Ref(deployment)
-))
+stage = t.add_resource(
+    Stage(
+        f'{stage_name}Stage',
+        StageName=stage_name,
+        RestApiId=Ref(rest_api),
+        DeploymentId=Ref(deployment),
+    )
+)
 
 key = t.add_resource(ApiKey(
     "ApiKey",

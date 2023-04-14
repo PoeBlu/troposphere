@@ -40,13 +40,13 @@ security_configuration = {
 def generate_rules(rules_name):
     global emr, scaling_policy
 
-    rules = [
+    return [
         emr.ScalingRule(
             Name=rules_name,
-            Description="%s rules" % rules_name,
+            Description=f"{rules_name} rules",
             Action=emr.ScalingAction(
                 Market="ON_DEMAND",
-                SimpleScalingPolicyConfiguration=scaling_policy
+                SimpleScalingPolicyConfiguration=scaling_policy,
             ),
             Trigger=emr.ScalingTrigger(
                 CloudWatchAlarmDefinition=emr.CloudWatchAlarmDefinition(
@@ -61,14 +61,13 @@ def generate_rules(rules_name):
                     Dimensions=[
                         emr.MetricDimension(
                             'my.custom.master.property',
-                            'my.custom.master.value'
+                            'my.custom.master.value',
                         )
-                    ]
+                    ],
                 )
-            )
+            ),
         )
     ]
-    return rules
 
 
 template = Template()

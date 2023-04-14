@@ -108,15 +108,11 @@ class Action(AWSProperty):
 
         def requires(action_type, prop):
             if self.properties.get('Type') == action_type and \
-                    prop not in self.properties:
-                raise ValueError(
-                    'Type "%s" requires definition of "%s"' % (
-                        action_type, prop
-                    )
-                )
+                        prop not in self.properties:
+                raise ValueError(f'Type "{action_type}" requires definition of "{prop}"')
 
             if prop in self.properties and \
-                    self.properties.get('Type') != action_type:
+                        self.properties.get('Type') != action_type:
                 raise ValueError(
                     'Definition of "%s" allowed only with '
                     'type "%s", was: "%s"' % (
@@ -297,14 +293,17 @@ class TargetGroup(AWSObject):
                     for prop in props_to_check:
 
                         if (prop not in self_props and required is True) or \
-                                (prop in self_props and required is False):
+                                    (prop in self_props and required is False):
                             invalid_props.append(prop)
 
-                    if len(invalid_props) > 0:
+                    if invalid_props:
 
                         # Make error message more readable in the default case
-                        type_msg = ('Omitting TargetType' if this_type is None
-                                    else 'TargetType of "%s"' % (this_type))
+                        type_msg = (
+                            'Omitting TargetType'
+                            if this_type is None
+                            else f'TargetType of "{this_type}"'
+                        )
 
                         raise ValueError(
                             '%s in "%s" %s definitions of %s' % (

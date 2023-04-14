@@ -89,12 +89,12 @@ class TemplateGenerator(Template):
     def inspect_resources(self):
         """ Returns a map of `ResourceType: ResourceClass` """
         if not self._inspect_resources:
-            d = {}
-            for m in self.inspect_members:
-                if issubclass(m, (AWSObject, cloudformation.AWSCustomObject)) \
-                        and hasattr(m, 'resource_type'):
-                    d[m.resource_type] = m
-
+            d = {
+                m.resource_type: m
+                for m in self.inspect_members
+                if issubclass(m, (AWSObject, cloudformation.AWSCustomObject))
+                and hasattr(m, 'resource_type')
+            }
             TemplateGenerator._inspect_resources = d
 
         return self._inspect_resources
@@ -103,11 +103,7 @@ class TemplateGenerator(Template):
     def inspect_functions(self):
         """ Returns a map of `FunctionName: FunctionClass` """
         if not self._inspect_functions:
-            d = {}
-            for m in self.inspect_members:
-                if issubclass(m, AWSHelperFn):
-                    d[m.__name__] = m
-
+            d = {m.__name__: m for m in self.inspect_members if issubclass(m, AWSHelperFn)}
             TemplateGenerator._inspect_functions = d
 
         return self._inspect_functions
@@ -133,12 +129,14 @@ class TemplateGenerator(Template):
         try:
             return self.inspect_resources[resource['Type']]
         except KeyError:
-            # is there a custom mapping?
-            for custom_member in self._custom_members:
-                if custom_member.resource_type == resource['Type']:
-                    return custom_member
-            # If no resource with `resource_type` == resource['Type'] found
-            return None
+            return next(
+                (
+                    custom_member
+                    for custom_member in self._custom_members
+                    if custom_member.resource_type == resource['Type']
+                ),
+                None,
+            )
 
     def _convert_definition(self, definition, ref=None, cls=None):
         """
@@ -178,18 +176,11 @@ class TemplateGenerator(Template):
                     return self._create_instance(expected_type, args, ref)
 
             if len(definition) == 1:  # This might be a function?
-                function_type = self._get_function_type(
-                    definition.keys()[0])
-                if function_type:
+                if function_type := self._get_function_type(definition.keys()[0]):
                     return self._create_instance(
                         function_type, definition.values()[0])
 
-            # nothing special here - return as dict
-            d = {}
-            for k, v in definition.iteritems():
-                d[k] = self._convert_definition(v)
-            return d
-
+            return {k: self._convert_definition(v) for k, v in definition.iteritems()}
         elif (isinstance(definition, Sequence) and
                 not isinstance(definition, basestring)):
             return [self._convert_definition(v) for v in definition]
@@ -213,16 +204,15 @@ class TemplateGenerator(Template):
         If `cls` is a list and contains a single troposphere type, the
          returned value will be a list of instances of that type.
         """
-        if isinstance(cls, Sequence):
-            if len(cls) == 1:
-                # a list of 1 type means we must provide a list of such objects
-                if (isinstance(args, basestring) or
-                        not isinstance(args, Sequence)):
-                    args = [args]
-                return [self._create_instance(cls[0], v) for v in args]
+        if isinstance(cls, Sequence) and len(cls) == 1:
+            # a list of 1 type means we must provide a list of such objects
+            if (isinstance(args, basestring) or
+                    not isinstance(args, Sequence)):
+                args = [args]
+            return [self._create_instance(cls[0], v) for v in args]
 
         if isinstance(cls, Sequence)\
-           or cls not in self.inspect_members.union(self._custom_members):
+               or cls not in self.inspect_members.union(self._custom_members):
             # this object doesn't map to any known object. could be a string
             # or int, or a Ref... or a list of types such as
             # [basestring, FindInMap, Ref] or maybe a
@@ -234,9 +224,7 @@ class TemplateGenerator(Template):
             # entering the other conditions.
             try:
                 if issubclass(cls, Tags):
-                    arg_dict = {}
-                    for d in args:
-                        arg_dict[d['Key']] = d['Value']
+                    arg_dict = {d['Key']: d['Value'] for d in args}
                     return cls(arg_dict)
 
                 if (isinstance(args, Sequence) and
@@ -250,15 +238,7 @@ class TemplateGenerator(Template):
                     return cls(args['Name'])
 
                 args = self._convert_definition(args)
-                if isinstance(args, Ref) and issubclass(cls, Ref):
-                    # watch out for double-refs...
-                    # this can happen if an object's .props has 'Ref'
-                    # as the expected type (which is wrong and should be
-                    # changed to basestring!)
-                    return args
-
-                return cls(args)
-
+                return args if isinstance(args, Ref) and issubclass(cls, Ref) else cls(args)
             except TypeError as ex:
                 if '__init__() takes exactly' not in ex.message:
                     raise
@@ -273,7 +253,7 @@ class TemplateGenerator(Template):
             # we try to build as many troposphere objects as we can by
             # inspecting its type validation metadata
             kwargs = {}
-            kwargs.update(args)
+            kwargs |= args
             for prop_name in getattr(cls, 'props', []):
                 if prop_name not in kwargs:
                     continue  # the user did not specify this value; skip it
@@ -357,12 +337,14 @@ class TemplateGenerator(Template):
             cloudformation.Init, {'config': init_config})
         auth = None
         if 'AWS::CloudFormation::Authentication' in args:
-            auth_blocks = {}
-            for k in args['AWS::CloudFormation::Authentication']:
-                auth_blocks[k] = self._create_instance(
+            auth_blocks = {
+                k: self._create_instance(
                     cloudformation.AuthenticationBlock,
                     args['AWS::CloudFormation::Authentication'][k],
-                    k)
+                    k,
+                )
+                for k in args['AWS::CloudFormation::Authentication']
+            }
             auth = self._create_instance(
                 cloudformation.Authentication, auth_blocks)
 
@@ -418,5 +400,5 @@ class ResourceTypeNotFound(Exception):
 class ResourceTypeNotDefined(Exception):
 
     def __init__(self, resource):
-        Exception.__init__(self, "ResourceType not defined for " + resource)
+        Exception.__init__(self, f"ResourceType not defined for {resource}")
         self.resource = resource

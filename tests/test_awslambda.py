@@ -70,8 +70,9 @@ class TestAWSLambda(unittest.TestCase):
             with self.assertRaises(ValueError) as context:
                 Environment(Variables={var: 'value'})
 
-            self.assertTrue('Invalid environment variable name: %s' % var
-                            in context.exception)
+            self.assertTrue(
+                f'Invalid environment variable name: {var}' in context.exception
+            )
 
     def test_environment_variable_reserved(self):
         for var in ['AWS_ACCESS_KEY', 'AWS_ACCESS_KEY_ID',
